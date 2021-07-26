@@ -228,7 +228,7 @@ void DbReportSelection::search()
 				reports \
 			WHERE \
 				label ILIKE '%"+elabel->text()+"%' \
-			ORDER BY datetime");
+			ORDER BY label");
 	if (!q->exec()) {
 		qDebug() << q->lastError().text();
 		goto err;

@@ -166,6 +166,7 @@ public:
 
 // general options
 	bool		show_sidebar;
+	bool            show_simplegraph;
 	bool		show_allctl;
 	bool		report_autosave;
 	QString		report_path;

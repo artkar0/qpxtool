@@ -112,6 +112,7 @@ static const drivedesclist drivelist =
 
 	{ "SONY    ",  DEV_LITEON, "DVD RW DW-Q58A",	LTN_SDVDR_G3, CHK_ERRC_CD | CHK_ERRC_DVD },
 	{ "SONY    ",  DEV_LITEON, "DVD RW DW-Q60A",	LTN_SDVDR_G3, CHK_ERRC_CD | CHK_ERRC_DVD },
+        { "HL-DT-ST",  DEV_LITEON, "BD-RE  WH16NS58 ", LTN_BDR, CHK_ERRC_CD | CHK_ERRC_DVD | CHK_ERRC_BD },
 
 	{ "", 0, "", 0}
 };
@@ -119,7 +120,6 @@ static const drivedesclist drivelist =
 static const drivedesclist blacklist =
 {
 	{ "TEAC    ",  DEV_TEAC, "CD-W552E", 0 },
-	{ "HL-DT-ST",  DEV_LG,   "",		 0 },
 	{ "TSSTcorp",  DEV_TSST, "",		 0 },
 
 	{ "", 0, "", 0}

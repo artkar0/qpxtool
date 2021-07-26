@@ -1,3 +1,17 @@
+QPxTool 0.8.1 modded by ArtKar v1
+ - QT5
+ - hardcoded speeds
+ - corrected scan CD on LG WH16NS58
+ - corrected problem with some BRs
+ - toggle P95 graph / simple graph
+ - BDXL in SQL
+ - added support for DVD Quality test on BD-RE WH16NS58
+ - added support for BD-RE WH16NS58 ( only tested Blu Ray quality test )
+ - added support for multilayer Blu Ray discs
+ - added support for BDXL
+ - changed graph style
+
+
 ************************************************************
 
 QPxTool -- CD/DVD quality checker

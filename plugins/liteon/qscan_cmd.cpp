@@ -276,25 +276,23 @@ int scan_liteon::cmd_cd_errc_block_old(cd_errc *data)
 
 int scan_liteon::cmd_cd_errc_block_new(cd_errc *data)
 {
-	dev->cmd[0] = 0xF3;
-	dev->cmd[1] = 0x0E;
-	dev->cmd[11]= 0x00;
-	if ((dev->err=dev->cmd.transport(READ,dev->rd_buf,10))){
-		sperror ("LiteOn_errc_cd_read_block",dev->err); return 1;
-	}
-	lba = dev->rd_buf[1] * 60 * 75 +
-		  dev->rd_buf[2] * 75 +
-		  dev->rd_buf[3];
+    dev->cmd[0] = 0xF3;
+    dev->cmd[1] = 0x0E;
+    dev->cmd[11]= 0x00;
+    if ((dev->err=dev->cmd.transport(READ,dev->rd_buf,0x10))){
+       sperror ("LiteOn_errc_cd_read_block",dev->err); return 1;
+    }
 
-	data->bler = ntoh16(dev->rd_buf+4);
-	data->e11 = 0;
-	data->e21 = 0;
-	data->e31 = 0;
-	data->e12 = 0;
-	data->e22 = ntoh16(dev->rd_buf+6);
-	data->e32 = 0;
-	data->uncr = 0;
-	return 0;
+    lba = ntoh32(dev->rd_buf);
+    data->bler = ntoh16(dev->rd_buf+6);
+    data->e11 = 0;
+    data->e21 = 0;
+    data->e31 = 0;
+    data->e12 = 0;
+    data->e22 = ntoh16(dev->rd_buf+4);
+    data->e32 = dev->rd_buf[6];
+    data->uncr = 0;
+    return 0;
 }
 
 int scan_liteon::cmd_cd_errc_block(cd_errc *data)
@@ -305,25 +303,33 @@ int scan_liteon::cmd_cd_errc_block(cd_errc *data)
 // ********************** DVD ERRC commands
 int scan_liteon::cmd_dvd_errc_block(dvd_errc *data)
 {
+       bool retry = false;
+       if (!lba) {
+               retry = true;
+               // if first sector scan requested
+               // we have to seek to first sector
+               dev->cmd[0] = MMC_SEEK;
+               if ((dev->err=dev->cmd.transport(READ,dev->rd_buf,2048))){
+                       sperror ("READ",dev->err); return 1;
+               }
+       }
+
+dvd_errc_repeat:
 	dev->cmd[0] = 0xF3;
 	dev->cmd[1] = 0x0E;
 	dev->cmd[8] = 0x10;
 	dev->cmd[11]= 0x00;
-	if ((dev->err=dev->cmd.transport(READ,dev->rd_buf,10))){
-		sperror ("LiteOn_errc_dvd_read_block",dev->err); return 1;
+       if ((dev->err=dev->cmd.transport(READ,dev->rd_buf,0x10))) {
+               sperror ("LiteOn_errc_bd_read_block",dev->err); return 1;
 	}
-#if 0
-	for (int i=0; i<10; i++) {
-	    printf(" %02X",dev->rd_buf[i]);
-	}
-	printf("\n");
-#endif
 
-// Data Received:
-// 00000000  00 00 00 8E 00 00 00 00                           .......        
-
-//	lba = ((dev->rd_buf[1] << 16 )& 0xFF0000) + ((dev->rd_buf[2] << 8)&0xFF00 ) + (dev->rd_buf[3] & 0xFF);
 	lba = ntoh32(dev->rd_buf);
+
+        if (!lba && retry) {
+                retry = false;
+                goto dvd_errc_repeat;
+        }
+
 
 	data->pie = ntoh16(dev->rd_buf+4);
 	data->pif = ntoh16(dev->rd_buf+6);
@@ -348,8 +354,9 @@ int scan_liteon::cmd_bd_errc_block(bd_errc *data)
 
 bd_errc_repeat:
 	dev->cmd[0] = 0xF3;
-	dev->cmd[1] = 0x0E;
-	dev->cmd[11]= 0x00;
+        dev->cmd[1] = 1;
+        dev->cmd[7] = 0;
+        dev->cmd[9] = 66;
 	if ((dev->err=dev->cmd.transport(READ,dev->rd_buf,0x10))) {
 		sperror ("LiteOn_errc_bd_read_block",dev->err); return 1;
 	}

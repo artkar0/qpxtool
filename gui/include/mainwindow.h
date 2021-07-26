@@ -167,6 +167,7 @@ private:
 				*act_about;
 
 	QAction		    *act_sb;
+	QAction             *act_sg;
 	QList<QAction*> act_sblist;
 	QActionGroup    *act_sbgrp;
 

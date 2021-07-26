@@ -50,6 +50,7 @@ public slots:
 	void selectDevice();
 	void reconfig();
 	void setSidebarVisible(bool);
+	void setSimpleGraph(bool);
 	void selectTab(int);
 	//inline void reconfig() { emit configured(); };
 
