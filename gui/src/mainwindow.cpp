@@ -70,11 +70,12 @@
 
 #define PRINT_GRAPH_SCALE  2.0
 
-#define HTML_GRAPH_W    600
-#define HTML_GRAPH_H    300
-#define HTML_GRAPH_WQ  "600"
-#define HTML_GRAPH_HQ  "300"
-#define HTML_GRAPH_HQ2 "150"
+#define HTML_GRAPH_W    1800
+#define HTML_GRAPH_H    600
+#define HTML_GRAPH_WQ  "1800"
+#define HTML_GRAPH_HQ  "600"
+#define HTML_GRAPH_HQ2 "300"
+
 
 const QString errcNameCD[8]  = { "BLER", "E11", "E21", "E31", "E12", "E22", "E32", "UNCR" };
 const QString errcNameDVD[8] = { "res",  "PIE", "PI8", "PIF", "POE", "PO8", "POF", "UNCR" };
@@ -222,6 +223,7 @@ void QPxToolMW::winit()
 	layout->addWidget(mwidget);
 
 	connect(act_sb, SIGNAL(toggled(bool)), mwidget, SLOT(setSidebarVisible(bool)));
+	connect(act_sg, SIGNAL(toggled(bool)), mwidget, SLOT(setSimpleGraph(bool)));
 
 	connect(pb_loej, SIGNAL(clicked()), this, SLOT(loejToggle()));
 	connect(pb_lock, SIGNAL(clicked()), this, SLOT(lockToggle()));
@@ -259,6 +261,11 @@ void QPxToolMW::create_actions()
 	act_sb->setShortcut( QKeySequence("Alt+B") );
 	act_sb->setCheckable(true);
 	act_sb->setChecked(set.show_sidebar);
+	act_sg     = new QAction(QIcon(":images/"), tr("Show simple graph"), this);
+	act_sg->setShortcut( QKeySequence("Alt+G") );
+	act_sg->setCheckable(true);
+	act_sg->setChecked(set.show_simplegraph);
+
 
 	QAction *act;
 	act_sbgrp = new QActionGroup(this);
@@ -342,6 +349,8 @@ void QPxToolMW::winit_menubar()
 	menu->addActions(act_sblist);
 	menu->addSeparator();
 	menu->addAction(act_sb);
+	menu->addSeparator();
+	menu->addAction(act_sg);
 
 	menubar->addMenu(menu);
 

@@ -37,6 +37,7 @@ QPxSettings::QPxSettings()
 //	geometry_testsel = QRect(0,0,0,0);
 
 	show_sidebar  = 0;
+	show_simplegraph  = 0;
 	show_allctl   = 0;
 	actions_flags = 0;
 
@@ -76,6 +77,7 @@ QPxSettings& QPxSettings::operator = (const QPxSettings& o)
 	geometry_pref = o.geometry_pref;
 
 	show_sidebar    = o.show_sidebar;
+	show_simplegraph    = o.show_simplegraph;
 	show_allctl     = o.show_allctl;
 	report_autosave = o.report_autosave;
 	report_path     = o.report_path;
@@ -135,6 +137,7 @@ void QPxSettings::load()
 	settings = new QSettings(QSettings::NativeFormat, QSettings::UserScope, "QPxTool", "qpxtool");
 	settings->beginGroup("/common");
 		show_sidebar     = settings->value("show_sidebar", 0).toBool();
+		show_simplegraph     = settings->value("show_simplegraph", 0).toBool();
 		show_allctl      = settings->value("show_allctl", 0).toBool();
 		report_autosave  = settings->value("report_autosave", 0).toBool();
 		report_path      = settings->value("report_path", "").toString();
@@ -204,6 +207,7 @@ void QPxSettings::save()
 	settings = new QSettings(QSettings::NativeFormat, QSettings::UserScope, "QPxTool", "qpxtool");
 	settings->beginGroup("/common");
 		settings->setValue("show_sidebar", show_sidebar);
+		settings->setValue("show_simplegraph", show_simplegraph);
 		settings->setValue("show_allctl", show_allctl);
 		settings->setValue("report_autosave", report_autosave);
 		settings->setValue("report_path", report_path);

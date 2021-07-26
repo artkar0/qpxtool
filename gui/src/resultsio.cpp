@@ -203,7 +203,9 @@ void ResultsReader::run() {
 							dev->media.grec    = attr.value("gigarec").toString().toDouble();
 							dev->media.spd1X   = attr.value("spd1X").toString().toInt();
 							dev->media.layers  = attr.value("layers").toString();
+							dev->media.gbpl  = attr.value("gbpl").toString();
 							dev->media.erasable= attr.value("erasable").toString();
+							dev->media.igbpl = dev->media.gbpl.toInt();
 							dev->media.ilayers = dev->media.layers.toInt();
 							dev->media.dstate  = attr.value("dstate").toString();
 							dev->media.sstate  = attr.value("sstate").toString();
@@ -396,6 +398,7 @@ void ResultsWriter::run() {
 
 	xml.writeAttribute("spd1X",     QString::number(dev->media.spd1X));
 	xml.writeAttribute("layers",    QString::number(dev->media.ilayers));
+	xml.writeAttribute("gbpl",    QString::number(dev->media.igbpl));
 	xml.writeAttribute("erasable",  dev->media.erasable);
 
 	xml.writeAttribute("dstate", dev->media.dstate);

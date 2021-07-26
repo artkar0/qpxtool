@@ -148,6 +148,7 @@ QPxMainWidget::~QPxMainWidget()
 }
 
 void QPxMainWidget::setSidebarVisible(bool en) { settings->show_sidebar = en; bframe->setVisible(en); }
+void QPxMainWidget::setSimpleGraph(bool en) { settings->show_simplegraph = en; }
 void QPxMainWidget::selectTab(int idx) { grp->button(idx)->setChecked(true); stack->setCurrentIndex(idx); }
 void QPxMainWidget::reconfig() { emit configured(); }
 void QPxMainWidget::clearDev() { tab_MediaInfo->clear(); tab_DevInfo->clear(); }

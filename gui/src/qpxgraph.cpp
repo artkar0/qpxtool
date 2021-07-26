@@ -30,8 +30,8 @@
 #define MARGIN_DEFR	40
 #define MARGIN_DEFB	18
 
-#define GRID_STYLE Qt::DotLine
-//#define GRID_STYLE Qt::DashLine
+//#define GRID_STYLE Qt::DotLine
+#define GRID_STYLE Qt::DashLine
 
 class IntList : public QList<int>
 {
@@ -307,7 +307,7 @@ void QPxGraph::drawGraph(QPainter *p, QSize s, device *dev, int ttype, const QRe
 			HscaleLBA = (1<<19) * 5 * dev->media.ilayers/sg.width();
 			Vscale1X = Vscale * 3;
 		} else if (dev->media.type.startsWith("BD")) {
-			HscaleLBA = (1<<19) * 25 * dev->media.ilayers/sg.width();
+			HscaleLBA = (1<<19) * dev->media.igbpl * dev->media.ilayers/sg.width();
 			Vscale1X = Vscale * 4;
 		}
 
@@ -504,7 +504,9 @@ void QPxGraph::drawErrc(QPainter* p, const QSize& s, device *dev, const QRect&)
 				x = (int) (dev->testData.errc[i].raw.lba/HscaleLBA);
 				if (dev->testData.errc[i].raw.err[e] >=0 ) {
 #ifdef SHOW_P95ERRC
+if (!(settings->show_simplegraph)) {
 					xerr.append(dev->testData.errc[i].raw.err[e]);
+}
 #endif
 // update min/max
 					if (min < 0 || min > dev->testData.errc[i].raw.err[e])
@@ -516,17 +518,24 @@ void QPxGraph::drawErrc(QPainter* p, const QSize& s, device *dev, const QRect&)
 				if (x!=xo || i==(dev->testData.errc.size()-1)) {
 // min-max
 					p->setPen(QPen(*settings->col_errc.raw[e], 1));
+if (settings->show_simplegraph) {
+                                        p->drawLine(xo, errc2h(s.height(), 0),
+                                                                xo, errc2h(s.height(), max));
+} else {
+
 					p->drawLine(xo, errc2h(s.height(), min),
 								xo, errc2h(s.height(), max));
-
+}
 // P=0.95
 #ifdef SHOW_P95ERRC
+if (!(settings->show_simplegraph)) {
 					M = (int)xerr.M();
 					D = (int)sqrt(xerr.dispers(M));
 					p->setPen(QPen(settings->col_errc.raw[e]->darker(), 1));
 					p->drawLine(xo, errc2h(s.height(), M-D),
 								xo, errc2h(s.height(), M+D));
 					xerr.clear();
+}
 #endif
 					min = -1;
 					max = -1;
@@ -866,7 +875,7 @@ void QPxGraph::drawGrid(QPainter* p, const QSize& s, device *dev, int ttype)
 		GBperLayer = 5;
 	} else if (dev->media.type.startsWith("BD")) {
 		isCD = 0;
-		GBperLayer = 25;
+		GBperLayer = dev->media.igbpl;
 	}
 
 	if (isCD) {

@@ -2317,13 +2317,19 @@ int determine_disc_type(drive_info* drive) {
 		} else if (drive->media.type & DISC_BD) {
  			drive->rd_buf[4]=0;
 			drive->cmd[0] = MMC_READ_DVD_STRUCTURE;
-			drive->cmd[7] = 0;//0x11; //dvd_dash;
-			drive->cmd[9] = 36;
-			drive->cmd[11] = 0;
+			drive->cmd[1] = 1;
+			drive->cmd[7] = 0;
+			drive->cmd[9] = 66;
+
 			if ((drive->err=drive->cmd.transport(READ,drive->rd_buf,36))) 
 				if (!drive->silent) sperror ("READ_DVD_STRUCTURE",drive->err);
 			drive->media.book_type = 0;
-			drive->media.layers = 1 + ((drive->rd_buf[6] & 0x60) >> 5);
+			drive->media.layers = 0 + ((drive->rd_buf[16] & 0xF0) >> 4);
+			if ((drive->rd_buf[17] & 0x0F) == 0) drive->media.gbpl = 25;
+			else if ((drive->rd_buf[17] & 0x0F) == 1) drive->media.gbpl = 25;
+			else if ((drive->rd_buf[17] & 0x0F) == 2) drive->media.gbpl = 27;
+			else if ((drive->rd_buf[17] & 0x0F) == 5) drive->media.gbpl = 33;
+
 			read_mediaid_bd(drive);
 			if (!drive->silent) printf("** MID: '%s'\n",drive->media.MID);
 		}
@@ -2692,7 +2698,11 @@ int set_cd_speed(drive_info* drive) {
 	drive->cmd[11] = 0;
 	if ((drive->err=drive->cmd.transport(NONE,NULL,0) )) {
 //		if (drive->err != 0x23A02) drive->capabilities&=(NCAP_SET_CD_SPEED);
-		if (!drive->silent) sperror ("SET_CD_SPEED",drive->err); return (drive->err);
+	if (!drive->silent) {
+	    sperror ("SET_CD_SPEED",drive->err);
+	    return (drive->err);
+	}
+
 	}
 	return 0;
 }
@@ -3120,7 +3130,11 @@ int plextor_px755_get_auth_code(drive_info* dev, unsigned char* auth_code)
 		{ if (!dev->silent) sperror ("PLEXTOR_PX755_GET_AUTH_CODE",dev->err); return dev->err;}
 	if (!dev->silent) {
 		printf("** Get PX755 auth: ");
-		for (int i=0; i<16; i++) printf("0x%02X ",dev->rd_buf[i]&0xFF); printf("\n");
+                for (int i=0; i<16; i++) {
+                        printf("0x%02X ",dev->rd_buf[i]&0xFF);
+                        printf("\n");
+                }
+
 	}
 	return 0;
 }

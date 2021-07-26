@@ -319,6 +319,7 @@ void TestDialog::updateData(bool save, bool setPlugin)
 	int idx;
 
 	spd_RT->addItems(dev->media.rspeeds);    spd_RT->addItem("Maximum");
+	spd_RT->addItem("1X");spd_RT->addItem("2X");spd_RT->addItem("4X");spd_RT->addItem("6X");spd_RT->addItem("8X");spd_RT->addItem("10X");spd_RT->addItem("12X");spd_RT->addItem("16X");
 	idx = spd_RT->findText(QString::number(dev->tspeeds.rt)+".",Qt::MatchStartsWith);
 #ifndef QT_NO_DEBUG
 	qDebug() << "spd_RT: " << dev->tspeeds.rt <<"idx:" << idx;
@@ -333,6 +334,7 @@ void TestDialog::updateData(bool save, bool setPlugin)
 	if (idx > 0) spd_WT->setCurrentIndex( idx );
 
 	spd_ERRC->addItems(dev->media.tspeeds_errc); spd_ERRC->addItem("Maximum");
+	spd_ERRC->addItem("1X");spd_ERRC->addItem("2X");spd_ERRC->addItem("4X");spd_ERRC->addItem("6X");spd_ERRC->addItem("8X");spd_ERRC->addItem("10X");spd_ERRC->addItem("12X");spd_ERRC->addItem("16X");
 	idx = spd_ERRC->findText(QString::number(dev->tspeeds.errc)+"X",Qt::MatchStartsWith);
 #ifndef QT_NO_DEBUG
 	qDebug() << "spd_ERRC: " << dev->tspeeds.errc <<"idx:" << idx;
