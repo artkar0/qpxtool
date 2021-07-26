@@ -1,0 +1,533 @@
+diff -Naur qpxtool-0.8.1.orig/console/qscan/qscan.cpp qpxtool-0.8.1/console/qscan/qscan.cpp
+--- qpxtool-0.8.1.orig/console/qscan/qscan.cpp	2021-07-26 01:32:03.862541745 +0200
++++ qpxtool-0.8.1/console/qscan/qscan.cpp	2021-07-26 01:35:29.049213007 +0200
+@@ -628,7 +628,11 @@
+ 			}
+ 		}
+ 		printf(IMEDIA "Layers        : %d\n", dev->media.layers);
+-	
++
++		if ( dev->media.type & (DISC_BD) ) {
++		    printf(IMEDIA "GB per Layer  : %d\n", dev->media.gbpl);
++		}
++
+ 		if ( dev->media.type & (DISC_DVD) ) {
+ //			read_disc_regions(drive);
+ 			if (!dev->media.dvdcss.protection) {
+diff -Naur qpxtool-0.8.1.orig/console/qscan/version.h qpxtool-0.8.1/console/qscan/version.h
+--- qpxtool-0.8.1.orig/console/qscan/version.h	2021-07-26 01:32:03.862541745 +0200
++++ qpxtool-0.8.1/console/qscan/version.h	2021-07-26 01:36:02.528995974 +0200
+@@ -9,5 +9,5 @@
+  * See the file "COPYING" for the exact licensing terms.
+  */
+ 
+-#define VERSION "0.7.2"
++#define VERSION "0.8.1 modded by ArtKar"
+ 
+diff -Naur qpxtool-0.8.1.orig/gui/include/device.h qpxtool-0.8.1/gui/include/device.h
+--- qpxtool-0.8.1.orig/gui/include/device.h	2021-07-26 01:32:03.862541745 +0200
++++ qpxtool-0.8.1/gui/include/device.h	2021-07-26 01:36:43.196732273 +0200
+@@ -345,6 +345,9 @@
+ 	QString		mid;
+ 	QString		layers;
+ 	int			ilayers;
++	QString                 gbpl;
++	int                     igbpl;
++
+ 	QString		prot;
+ 	QString		regions;
+ 
+diff -Naur qpxtool-0.8.1.orig/gui/include/mainwidget.h qpxtool-0.8.1/gui/include/mainwidget.h
+--- qpxtool-0.8.1.orig/gui/include/mainwidget.h	2021-07-26 01:32:03.862541745 +0200
++++ qpxtool-0.8.1/gui/include/mainwidget.h	2021-07-26 01:37:04.020597217 +0200
+@@ -50,6 +50,7 @@
+ 	void selectDevice();
+ 	void reconfig();
+ 	void setSidebarVisible(bool);
++	void setSimpleGraph(bool);
+ 	void selectTab(int);
+ 	//inline void reconfig() { emit configured(); };
+ 
+diff -Naur qpxtool-0.8.1.orig/gui/include/mainwindow.h qpxtool-0.8.1/gui/include/mainwindow.h
+--- qpxtool-0.8.1.orig/gui/include/mainwindow.h	2021-07-26 01:32:03.862541745 +0200
++++ qpxtool-0.8.1/gui/include/mainwindow.h	2021-07-26 01:37:24.044467332 +0200
+@@ -167,6 +167,7 @@
+ 				*act_about;
+ 
+ 	QAction		    *act_sb;
++	QAction             *act_sg;
+ 	QList<QAction*> act_sblist;
+ 	QActionGroup    *act_sbgrp;
+ 
+diff -Naur qpxtool-0.8.1.orig/gui/include/qpxsettings.h qpxtool-0.8.1/gui/include/qpxsettings.h
+--- qpxtool-0.8.1.orig/gui/include/qpxsettings.h	2021-07-26 01:32:03.862541745 +0200
++++ qpxtool-0.8.1/gui/include/qpxsettings.h	2021-07-26 01:37:41.604353417 +0200
+@@ -166,6 +166,7 @@
+ 
+ // general options
+ 	bool		show_sidebar;
++	bool            show_simplegraph;
+ 	bool		show_allctl;
+ 	bool		report_autosave;
+ 	QString		report_path;
+diff -Naur qpxtool-0.8.1.orig/gui/include/version.h qpxtool-0.8.1/gui/include/version.h
+--- qpxtool-0.8.1.orig/gui/include/version.h	2021-07-26 01:32:03.862541745 +0200
++++ qpxtool-0.8.1/gui/include/version.h	2021-07-26 01:37:54.604269075 +0200
+@@ -13,7 +13,7 @@
+ #ifndef _QPX_VERSION_H
+ #define _QPX_VERSION_H
+ 
+-#define VERSION "0.7.2"
++#define VERSION "0.8.1 modded by ArtKar"
+ 
+ #endif
+ 
+diff -Naur qpxtool-0.8.1.orig/gui/src/db_report_selection.cpp qpxtool-0.8.1/gui/src/db_report_selection.cpp
+--- qpxtool-0.8.1.orig/gui/src/db_report_selection.cpp	2021-07-26 01:32:03.858541771 +0200
++++ qpxtool-0.8.1/gui/src/db_report_selection.cpp	2021-07-26 01:38:20.116103540 +0200
+@@ -228,7 +228,7 @@
+ 				reports \
+ 			WHERE \
+ 				label ILIKE '%"+elabel->text()+"%' \
+-			ORDER BY datetime");
++			ORDER BY label");
+ 	if (!q->exec()) {
+ 		qDebug() << q->lastError().text();
+ 		goto err;
+diff -Naur qpxtool-0.8.1.orig/gui/src/device.cpp qpxtool-0.8.1/gui/src/device.cpp
+--- qpxtool-0.8.1.orig/gui/src/device.cpp	2021-07-26 01:32:03.862541745 +0200
++++ qpxtool-0.8.1/gui/src/device.cpp	2021-07-26 01:41:00.831060231 +0200
+@@ -274,6 +274,8 @@
+ 	media.erasable	= "-";
+ 	media.layers	= "-";
+ 	media.ilayers	= 1;
++	media.gbpl      = "-";
++	media.igbpl     = 25;
+ 	media.prot		= "-";
+ 	media.regions	= "-";
+ 	media.creads	= 0;
+@@ -1358,6 +1360,11 @@
+ 				media.ilayers = sl[1].toInt();
+ 				if (media.ilayers <= 0)
+ 					media.ilayers = 1; 
++                        } else if (sl[0].contains("GB per Layer", Qt::CaseInsensitive)) {
++                               media.gbpl = sl[1];
++                               media.igbpl = sl[1].toInt();
++                               if (media.igbpl <= 0)
++                                       media.igbpl = 25;
+ 			} else if (sl[0].contains("Protection", Qt::CaseInsensitive)) {
+ 				media.prot = sl[1];
+ 			} else if (sl[0].contains("Regions", Qt::CaseInsensitive)) {
+diff -Naur qpxtool-0.8.1.orig/gui/src/mainwidget.cpp qpxtool-0.8.1/gui/src/mainwidget.cpp
+--- qpxtool-0.8.1.orig/gui/src/mainwidget.cpp	2021-07-26 01:32:03.858541771 +0200
++++ qpxtool-0.8.1/gui/src/mainwidget.cpp	2021-07-26 01:41:18.982942347 +0200
+@@ -148,6 +148,7 @@
+ }
+ 
+ void QPxMainWidget::setSidebarVisible(bool en) { settings->show_sidebar = en; bframe->setVisible(en); }
++void QPxMainWidget::setSimpleGraph(bool en) { settings->show_simplegraph = en; }
+ void QPxMainWidget::selectTab(int idx) { grp->button(idx)->setChecked(true); stack->setCurrentIndex(idx); }
+ void QPxMainWidget::reconfig() { emit configured(); }
+ void QPxMainWidget::clearDev() { tab_MediaInfo->clear(); tab_DevInfo->clear(); }
+diff -Naur qpxtool-0.8.1.orig/gui/src/mainwindow.cpp qpxtool-0.8.1/gui/src/mainwindow.cpp
+--- qpxtool-0.8.1.orig/gui/src/mainwindow.cpp	2021-07-26 01:32:03.858541771 +0200
++++ qpxtool-0.8.1/gui/src/mainwindow.cpp	2021-07-26 02:01:11.147353167 +0200
+@@ -70,11 +70,12 @@
+ 
+ #define PRINT_GRAPH_SCALE  2.0
+ 
+-#define HTML_GRAPH_W    600
+-#define HTML_GRAPH_H    300
+-#define HTML_GRAPH_WQ  "600"
+-#define HTML_GRAPH_HQ  "300"
+-#define HTML_GRAPH_HQ2 "150"
++#define HTML_GRAPH_W    1800
++#define HTML_GRAPH_H    600
++#define HTML_GRAPH_WQ  "1800"
++#define HTML_GRAPH_HQ  "600"
++#define HTML_GRAPH_HQ2 "300"
++
+ 
+ const QString errcNameCD[8]  = { "BLER", "E11", "E21", "E31", "E12", "E22", "E32", "UNCR" };
+ const QString errcNameDVD[8] = { "res",  "PIE", "PI8", "PIF", "POE", "PO8", "POF", "UNCR" };
+@@ -222,6 +223,7 @@
+ 	layout->addWidget(mwidget);
+ 
+ 	connect(act_sb, SIGNAL(toggled(bool)), mwidget, SLOT(setSidebarVisible(bool)));
++	connect(act_sg, SIGNAL(toggled(bool)), mwidget, SLOT(setSimpleGraph(bool)));
+ 
+ 	connect(pb_loej, SIGNAL(clicked()), this, SLOT(loejToggle()));
+ 	connect(pb_lock, SIGNAL(clicked()), this, SLOT(lockToggle()));
+@@ -259,6 +261,11 @@
+ 	act_sb->setShortcut( QKeySequence("Alt+B") );
+ 	act_sb->setCheckable(true);
+ 	act_sb->setChecked(set.show_sidebar);
++	act_sg     = new QAction(QIcon(":images/"), tr("Show simple graph"), this);
++	act_sg->setShortcut( QKeySequence("Alt+G") );
++	act_sg->setCheckable(true);
++	act_sg->setChecked(set.show_simplegraph);
++
+ 
+ 	QAction *act;
+ 	act_sbgrp = new QActionGroup(this);
+@@ -342,6 +349,8 @@
+ 	menu->addActions(act_sblist);
+ 	menu->addSeparator();
+ 	menu->addAction(act_sb);
++	menu->addSeparator();
++	menu->addAction(act_sg);
+ 
+ 	menubar->addMenu(menu);
+ 
+diff -Naur qpxtool-0.8.1.orig/gui/src/qpxgraph.cpp qpxtool-0.8.1/gui/src/qpxgraph.cpp
+--- qpxtool-0.8.1.orig/gui/src/qpxgraph.cpp	2021-07-26 01:32:03.858541771 +0200
++++ qpxtool-0.8.1/gui/src/qpxgraph.cpp	2021-07-26 01:46:41.224848460 +0200
+@@ -30,8 +30,8 @@
+ #define MARGIN_DEFR	40
+ #define MARGIN_DEFB	18
+ 
+-#define GRID_STYLE Qt::DotLine
+-//#define GRID_STYLE Qt::DashLine
++//#define GRID_STYLE Qt::DotLine
++#define GRID_STYLE Qt::DashLine
+ 
+ class IntList : public QList<int>
+ {
+@@ -307,7 +307,7 @@
+ 			HscaleLBA = (1<<19) * 5 * dev->media.ilayers/sg.width();
+ 			Vscale1X = Vscale * 3;
+ 		} else if (dev->media.type.startsWith("BD")) {
+-			HscaleLBA = (1<<19) * 25 * dev->media.ilayers/sg.width();
++			HscaleLBA = (1<<19) * dev->media.igbpl * dev->media.ilayers/sg.width();
+ 			Vscale1X = Vscale * 4;
+ 		}
+ 
+@@ -504,7 +504,9 @@
+ 				x = (int) (dev->testData.errc[i].raw.lba/HscaleLBA);
+ 				if (dev->testData.errc[i].raw.err[e] >=0 ) {
+ #ifdef SHOW_P95ERRC
++if (!(settings->show_simplegraph)) {
+ 					xerr.append(dev->testData.errc[i].raw.err[e]);
++}
+ #endif
+ // update min/max
+ 					if (min < 0 || min > dev->testData.errc[i].raw.err[e])
+@@ -516,17 +518,24 @@
+ 				if (x!=xo || i==(dev->testData.errc.size()-1)) {
+ // min-max
+ 					p->setPen(QPen(*settings->col_errc.raw[e], 1));
++if (settings->show_simplegraph) {
++                                        p->drawLine(xo, errc2h(s.height(), 0),
++                                                                xo, errc2h(s.height(), max));
++} else {
++
+ 					p->drawLine(xo, errc2h(s.height(), min),
+ 								xo, errc2h(s.height(), max));
+-
++}
+ // P=0.95
+ #ifdef SHOW_P95ERRC
++if (!(settings->show_simplegraph)) {
+ 					M = (int)xerr.M();
+ 					D = (int)sqrt(xerr.dispers(M));
+ 					p->setPen(QPen(settings->col_errc.raw[e]->darker(), 1));
+ 					p->drawLine(xo, errc2h(s.height(), M-D),
+ 								xo, errc2h(s.height(), M+D));
+ 					xerr.clear();
++}
+ #endif
+ 					min = -1;
+ 					max = -1;
+@@ -866,7 +875,7 @@
+ 		GBperLayer = 5;
+ 	} else if (dev->media.type.startsWith("BD")) {
+ 		isCD = 0;
+-		GBperLayer = 25;
++		GBperLayer = dev->media.igbpl;
+ 	}
+ 
+ 	if (isCD) {
+diff -Naur qpxtool-0.8.1.orig/gui/src/qpxsettings.cpp qpxtool-0.8.1/gui/src/qpxsettings.cpp
+--- qpxtool-0.8.1.orig/gui/src/qpxsettings.cpp	2021-07-26 01:32:03.858541771 +0200
++++ qpxtool-0.8.1/gui/src/qpxsettings.cpp	2021-07-26 01:47:47.560417210 +0200
+@@ -37,6 +37,7 @@
+ //	geometry_testsel = QRect(0,0,0,0);
+ 
+ 	show_sidebar  = 0;
++	show_simplegraph  = 0;
+ 	show_allctl   = 0;
+ 	actions_flags = 0;
+ 
+@@ -76,6 +77,7 @@
+ 	geometry_pref = o.geometry_pref;
+ 
+ 	show_sidebar    = o.show_sidebar;
++	show_simplegraph    = o.show_simplegraph;
+ 	show_allctl     = o.show_allctl;
+ 	report_autosave = o.report_autosave;
+ 	report_path     = o.report_path;
+@@ -135,6 +137,7 @@
+ 	settings = new QSettings(QSettings::NativeFormat, QSettings::UserScope, "QPxTool", "qpxtool");
+ 	settings->beginGroup("/common");
+ 		show_sidebar     = settings->value("show_sidebar", 0).toBool();
++		show_simplegraph     = settings->value("show_simplegraph", 0).toBool();
+ 		show_allctl      = settings->value("show_allctl", 0).toBool();
+ 		report_autosave  = settings->value("report_autosave", 0).toBool();
+ 		report_path      = settings->value("report_path", "").toString();
+@@ -204,6 +207,7 @@
+ 	settings = new QSettings(QSettings::NativeFormat, QSettings::UserScope, "QPxTool", "qpxtool");
+ 	settings->beginGroup("/common");
+ 		settings->setValue("show_sidebar", show_sidebar);
++		settings->setValue("show_simplegraph", show_simplegraph);
+ 		settings->setValue("show_allctl", show_allctl);
+ 		settings->setValue("report_autosave", report_autosave);
+ 		settings->setValue("report_path", report_path);
+diff -Naur qpxtool-0.8.1.orig/gui/src/resultsio.cpp qpxtool-0.8.1/gui/src/resultsio.cpp
+--- qpxtool-0.8.1.orig/gui/src/resultsio.cpp	2021-07-26 01:32:03.858541771 +0200
++++ qpxtool-0.8.1/gui/src/resultsio.cpp	2021-07-26 01:49:08.763889233 +0200
+@@ -203,7 +203,9 @@
+ 							dev->media.grec    = attr.value("gigarec").toString().toDouble();
+ 							dev->media.spd1X   = attr.value("spd1X").toString().toInt();
+ 							dev->media.layers  = attr.value("layers").toString();
++							dev->media.gbpl  = attr.value("gbpl").toString();
+ 							dev->media.erasable= attr.value("erasable").toString();
++							dev->media.igbpl = dev->media.gbpl.toInt();
+ 							dev->media.ilayers = dev->media.layers.toInt();
+ 							dev->media.dstate  = attr.value("dstate").toString();
+ 							dev->media.sstate  = attr.value("sstate").toString();
+@@ -396,6 +398,7 @@
+ 
+ 	xml.writeAttribute("spd1X",     QString::number(dev->media.spd1X));
+ 	xml.writeAttribute("layers",    QString::number(dev->media.ilayers));
++	xml.writeAttribute("gbpl",    QString::number(dev->media.igbpl));
+ 	xml.writeAttribute("erasable",  dev->media.erasable);
+ 
+ 	xml.writeAttribute("dstate", dev->media.dstate);
+diff -Naur qpxtool-0.8.1.orig/gui/src/testdialog.cpp qpxtool-0.8.1/gui/src/testdialog.cpp
+--- qpxtool-0.8.1.orig/gui/src/testdialog.cpp	2021-07-26 01:32:03.858541771 +0200
++++ qpxtool-0.8.1/gui/src/testdialog.cpp	2021-07-26 02:30:39.729747142 +0200
+@@ -319,6 +319,7 @@
+ 	int idx;
+ 
+ 	spd_RT->addItems(dev->media.rspeeds);    spd_RT->addItem("Maximum");
++	spd_RT->addItem("1X");spd_RT->addItem("2X");spd_RT->addItem("4X");spd_RT->addItem("6X");spd_RT->addItem("8X");spd_RT->addItem("10X");spd_RT->addItem("12X");spd_RT->addItem("16X");
+ 	idx = spd_RT->findText(QString::number(dev->tspeeds.rt)+".",Qt::MatchStartsWith);
+ #ifndef QT_NO_DEBUG
+ 	qDebug() << "spd_RT: " << dev->tspeeds.rt <<"idx:" << idx;
+@@ -333,6 +334,7 @@
+ 	if (idx > 0) spd_WT->setCurrentIndex( idx );
+ 
+ 	spd_ERRC->addItems(dev->media.tspeeds_errc); spd_ERRC->addItem("Maximum");
++	spd_ERRC->addItem("1X");spd_ERRC->addItem("2X");spd_ERRC->addItem("4X");spd_ERRC->addItem("6X");spd_ERRC->addItem("8X");spd_ERRC->addItem("10X");spd_ERRC->addItem("12X");spd_ERRC->addItem("16X");
+ 	idx = spd_ERRC->findText(QString::number(dev->tspeeds.errc)+"X",Qt::MatchStartsWith);
+ #ifndef QT_NO_DEBUG
+ 	qDebug() << "spd_ERRC: " << dev->tspeeds.errc <<"idx:" << idx;
+diff -Naur qpxtool-0.8.1.orig/lib/qpxtransport/include/qpx_mmc.h qpxtool-0.8.1/lib/qpxtransport/include/qpx_mmc.h
+--- qpxtool-0.8.1.orig/lib/qpxtransport/include/qpx_mmc.h	2021-07-26 01:32:03.854541797 +0200
++++ qpxtool-0.8.1/lib/qpxtransport/include/qpx_mmc.h	2021-07-26 01:54:47.605685495 +0200
+@@ -144,6 +144,7 @@
+ 	uint8_t		disc_size;	// indicates 120/80mm disc
+ 	uint8_t		polarity;   // Push-Pull polarity flags per layer for BD (indicates HtL or LtH)
+ 	uint8_t		layers;		// Layers num (!CD)	
++        uint8_t         gbpl;           // Layers num (!CD)
+ 	int			sectsize;
+ 	int32_t	capacity;	// Recorded capacity in sectors
+ 	msf		capacity_msf;
+diff -Naur qpxtool-0.8.1.orig/lib/qpxtransport/qpx_mmc.cpp qpxtool-0.8.1/lib/qpxtransport/qpx_mmc.cpp
+--- qpxtool-0.8.1.orig/lib/qpxtransport/qpx_mmc.cpp	2021-07-26 01:32:03.854541797 +0200
++++ qpxtool-0.8.1/lib/qpxtransport/qpx_mmc.cpp	2021-07-26 01:54:20.213863672 +0200
+@@ -2317,13 +2317,19 @@
+ 		} else if (drive->media.type & DISC_BD) {
+  			drive->rd_buf[4]=0;
+ 			drive->cmd[0] = MMC_READ_DVD_STRUCTURE;
+-			drive->cmd[7] = 0;//0x11; //dvd_dash;
+-			drive->cmd[9] = 36;
+-			drive->cmd[11] = 0;
++			drive->cmd[1] = 1;
++			drive->cmd[7] = 0;
++			drive->cmd[9] = 66;
++
+ 			if ((drive->err=drive->cmd.transport(READ,drive->rd_buf,36))) 
+ 				if (!drive->silent) sperror ("READ_DVD_STRUCTURE",drive->err);
+ 			drive->media.book_type = 0;
+-			drive->media.layers = 1 + ((drive->rd_buf[6] & 0x60) >> 5);
++			drive->media.layers = 0 + ((drive->rd_buf[16] & 0xF0) >> 4);
++			if ((drive->rd_buf[17] & 0x0F) == 0) drive->media.gbpl = 25;
++			else if ((drive->rd_buf[17] & 0x0F) == 1) drive->media.gbpl = 25;
++			else if ((drive->rd_buf[17] & 0x0F) == 2) drive->media.gbpl = 27;
++			else if ((drive->rd_buf[17] & 0x0F) == 5) drive->media.gbpl = 33;
++
+ 			read_mediaid_bd(drive);
+ 			if (!drive->silent) printf("** MID: '%s'\n",drive->media.MID);
+ 		}
+@@ -2692,7 +2698,11 @@
+ 	drive->cmd[11] = 0;
+ 	if ((drive->err=drive->cmd.transport(NONE,NULL,0) )) {
+ //		if (drive->err != 0x23A02) drive->capabilities&=(NCAP_SET_CD_SPEED);
+-		if (!drive->silent) sperror ("SET_CD_SPEED",drive->err); return (drive->err);
++	if (!drive->silent) {
++	    sperror ("SET_CD_SPEED",drive->err);
++	    return (drive->err);
++	}
++
+ 	}
+ 	return 0;
+ }
+@@ -3120,7 +3130,11 @@
+ 		{ if (!dev->silent) sperror ("PLEXTOR_PX755_GET_AUTH_CODE",dev->err); return dev->err;}
+ 	if (!dev->silent) {
+ 		printf("** Get PX755 auth: ");
+-		for (int i=0; i<16; i++) printf("0x%02X ",dev->rd_buf[i]&0xFF); printf("\n");
++                for (int i=0; i<16; i++) {
++                        printf("0x%02X ",dev->rd_buf[i]&0xFF);
++                        printf("\n");
++                }
++
+ 	}
+ 	return 0;
+ }
+diff -Naur qpxtool-0.8.1.orig/plugins/liteon/qscan_cmd.cpp qpxtool-0.8.1/plugins/liteon/qscan_cmd.cpp
+--- qpxtool-0.8.1.orig/plugins/liteon/qscan_cmd.cpp	2021-07-26 01:32:03.854541797 +0200
++++ qpxtool-0.8.1/plugins/liteon/qscan_cmd.cpp	2021-07-26 02:03:19.350589436 +0200
+@@ -276,25 +276,23 @@
+ 
+ int scan_liteon::cmd_cd_errc_block_new(cd_errc *data)
+ {
+-	dev->cmd[0] = 0xF3;
+-	dev->cmd[1] = 0x0E;
+-	dev->cmd[11]= 0x00;
+-	if ((dev->err=dev->cmd.transport(READ,dev->rd_buf,10))){
+-		sperror ("LiteOn_errc_cd_read_block",dev->err); return 1;
+-	}
+-	lba = dev->rd_buf[1] * 60 * 75 +
+-		  dev->rd_buf[2] * 75 +
+-		  dev->rd_buf[3];
+-
+-	data->bler = ntoh16(dev->rd_buf+4);
+-	data->e11 = 0;
+-	data->e21 = 0;
+-	data->e31 = 0;
+-	data->e12 = 0;
+-	data->e22 = ntoh16(dev->rd_buf+6);
+-	data->e32 = 0;
+-	data->uncr = 0;
+-	return 0;
++    dev->cmd[0] = 0xF3;
++    dev->cmd[1] = 0x0E;
++    dev->cmd[11]= 0x00;
++    if ((dev->err=dev->cmd.transport(READ,dev->rd_buf,0x10))){
++       sperror ("LiteOn_errc_cd_read_block",dev->err); return 1;
++    }
++
++    lba = ntoh32(dev->rd_buf);
++    data->bler = ntoh16(dev->rd_buf+6);
++    data->e11 = 0;
++    data->e21 = 0;
++    data->e31 = 0;
++    data->e12 = 0;
++    data->e22 = ntoh16(dev->rd_buf+4);
++    data->e32 = dev->rd_buf[6];
++    data->uncr = 0;
++    return 0;
+ }
+ 
+ int scan_liteon::cmd_cd_errc_block(cd_errc *data)
+@@ -305,26 +303,34 @@
+ // ********************** DVD ERRC commands
+ int scan_liteon::cmd_dvd_errc_block(dvd_errc *data)
+ {
++       bool retry = false;
++       if (!lba) {
++               retry = true;
++               // if first sector scan requested
++               // we have to seek to first sector
++               dev->cmd[0] = MMC_SEEK;
++               if ((dev->err=dev->cmd.transport(READ,dev->rd_buf,2048))){
++                       sperror ("READ",dev->err); return 1;
++               }
++       }
++
++dvd_errc_repeat:
+ 	dev->cmd[0] = 0xF3;
+ 	dev->cmd[1] = 0x0E;
+ 	dev->cmd[8] = 0x10;
+ 	dev->cmd[11]= 0x00;
+-	if ((dev->err=dev->cmd.transport(READ,dev->rd_buf,10))){
+-		sperror ("LiteOn_errc_dvd_read_block",dev->err); return 1;
++       if ((dev->err=dev->cmd.transport(READ,dev->rd_buf,0x10))) {
++               sperror ("LiteOn_errc_bd_read_block",dev->err); return 1;
+ 	}
+-#if 0
+-	for (int i=0; i<10; i++) {
+-	    printf(" %02X",dev->rd_buf[i]);
+-	}
+-	printf("\n");
+-#endif
+-
+-// Data Received:
+-// 00000000  00 00 00 8E 00 00 00 00                           ...Ž....        
+ 
+-//	lba = ((dev->rd_buf[1] << 16 )& 0xFF0000) + ((dev->rd_buf[2] << 8)&0xFF00 ) + (dev->rd_buf[3] & 0xFF);
+ 	lba = ntoh32(dev->rd_buf);
+ 
++        if (!lba && retry) {
++                retry = false;
++                goto dvd_errc_repeat;
++        }
++
++
+ 	data->pie = ntoh16(dev->rd_buf+4);
+ 	data->pif = ntoh16(dev->rd_buf+6);
+ 	data->poe = 0;
+@@ -348,8 +354,9 @@
+ 
+ bd_errc_repeat:
+ 	dev->cmd[0] = 0xF3;
+-	dev->cmd[1] = 0x0E;
+-	dev->cmd[11]= 0x00;
++        dev->cmd[1] = 1;
++        dev->cmd[7] = 0;
++        dev->cmd[9] = 66;
+ 	if ((dev->err=dev->cmd.transport(READ,dev->rd_buf,0x10))) {
+ 		sperror ("LiteOn_errc_bd_read_block",dev->err); return 1;
+ 	}
+diff -Naur qpxtool-0.8.1.orig/plugins/liteon/qscan_plugin.h qpxtool-0.8.1/plugins/liteon/qscan_plugin.h
+--- qpxtool-0.8.1.orig/plugins/liteon/qscan_plugin.h	2021-07-26 01:32:03.854541797 +0200
++++ qpxtool-0.8.1/plugins/liteon/qscan_plugin.h	2021-07-26 01:57:44.952548000 +0200
+@@ -112,6 +112,7 @@
+ 
+ 	{ "SONY    ",  DEV_LITEON, "DVD RW DW-Q58A",	LTN_SDVDR_G3, CHK_ERRC_CD | CHK_ERRC_DVD },
+ 	{ "SONY    ",  DEV_LITEON, "DVD RW DW-Q60A",	LTN_SDVDR_G3, CHK_ERRC_CD | CHK_ERRC_DVD },
++        { "HL-DT-ST",  DEV_LITEON, "BD-RE  WH16NS58 ", LTN_BDR, CHK_ERRC_CD | CHK_ERRC_DVD | CHK_ERRC_BD },
+ 
+ 	{ "", 0, "", 0}
+ };
+@@ -119,7 +120,6 @@
+ static const drivedesclist blacklist =
+ {
+ 	{ "TEAC    ",  DEV_TEAC, "CD-W552E", 0 },
+-	{ "HL-DT-ST",  DEV_LG,   "",		 0 },
+ 	{ "TSSTcorp",  DEV_TSST, "",		 0 },
+ 
+ 	{ "", 0, "", 0}
+diff -Naur qpxtool-0.8.1.orig/README qpxtool-0.8.1/README
+--- qpxtool-0.8.1.orig/README	2021-07-26 01:32:03.850541823 +0200
++++ qpxtool-0.8.1/README	2021-07-26 02:29:17.443213628 +0200
+@@ -1,3 +1,17 @@
++QPxTool 0.8.1 modded by ArtKar v1
++ - QT5
++ - hardcoded speeds
++ - corrected scan CD on LG WH16NS58
++ - corrected problem with some BRs
++ - toggle P95 graph / simple graph
++ - BDXL in SQL
++ - added support for DVD Quality test on BD-RE WH16NS58
++ - added support for BD-RE WH16NS58 ( only tested Blu Ray quality test )
++ - added support for multilayer Blu Ray discs
++ - added support for BDXL
++ - changed graph style
++
++
+ ************************************************************
+ 
+ QPxTool -- CD/DVD quality checker
