@@ -1,0 +1,11 @@
+#!/usr/bin/make -f
+
+export DEB_CXXFLAGS_MAINT_APPEND = $(shell dpkg-buildflags --get CPPFLAGS)
+export DEB_BUILD_MAINT_OPTIONS = hardening=+all
+export QT_SELECT=qt5
+
+%:
+	dh $@ --no-parallel
+
+override_dh_auto_configure:
+	./configure --prefix=/usr --libdir=/usr/lib --mandir=/usr/share/man
